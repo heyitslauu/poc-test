@@ -42,11 +42,18 @@ jobs:
           envs: ENV_FILE_CONTENT,DOCKER_IMAGE
           script: |
             cd ~/app
+
+            # Clean up old container from previous bare docker run
+            sudo docker stop ${{ secrets.APP_NAME }} 2>/dev/null || true
+            sudo docker rm ${{ secrets.APP_NAME }} 2>/dev/null || true
+
+            # Write env file and export image name
             echo "$ENV_FILE_CONTENT" > .env
-            export DOCKER_IMAGE="${DOCKER_IMAGE}"
+            echo "DOCKER_IMAGE=${DOCKER_IMAGE}" >> .env
+
             sudo docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-            sudo -E docker compose -f compose.prod.yaml pull
-            sudo -E docker compose -f compose.prod.yaml up -d --force-recreate
+            sudo docker compose -f compose.prod.yaml pull
+            sudo docker compose -f compose.prod.yaml up -d --force-recreate
             sudo docker image prune -f
         env:
           ENV_FILE_CONTENT: ${{ secrets.ENV_FILE }}
