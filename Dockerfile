@@ -56,7 +56,6 @@ COPY --from=builder --chown=exfsds:exfsds /app/deployment ./deployment
 COPY --from=deps --chown=exfsds:exfsds /app/node_modules ./node_modules
 COPY --from=builder --chown=exfsds:exfsds /app/src/database ./src/database
 COPY --from=builder --chown=exfsds:exfsds /app/drizzle.config.ts ./drizzle.config.ts
-COPY --chown=exfsds:exfsds .env .
 
 # Create logs directory with proper permissions
 RUN mkdir -p /app/logs && \
