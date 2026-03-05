@@ -1,0 +1,23 @@
+services:
+  empowerx-fsds-api:
+    image: ${DOCKER_IMAGE}
+    container_name: empowerx-fsds-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/app/logs:rw
+    env_file:
+      - .env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
