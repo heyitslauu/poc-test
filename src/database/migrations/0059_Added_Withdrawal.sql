@@ -1,0 +1,1 @@
+ALTER TABLE "withdrawals" ADD COLUMN "workflow_id" uuid;

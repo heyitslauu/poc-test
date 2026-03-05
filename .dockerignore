@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+*.md
+.husky
+.vscode
+coverage
+logs
+*.log
+test
+.docker
+Dockerfile*
+docker-compose*
+compose.yaml

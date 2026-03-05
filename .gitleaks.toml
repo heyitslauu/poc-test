@@ -1,0 +1,10 @@
+[allowlist]
+description = "Ignore test secrets"
+paths = [
+  "tests/",
+  "docs/"
+]
+
+regexes = [
+  "example_key_123"
+]

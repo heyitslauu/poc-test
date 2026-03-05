@@ -1,0 +1,1 @@
+ALTER TABLE "deposits" ADD COLUMN "workflow_id" uuid;

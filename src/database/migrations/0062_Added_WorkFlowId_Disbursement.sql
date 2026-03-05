@@ -1,0 +1,1 @@
+ALTER TABLE "disbursements" ADD COLUMN "workflow_id" uuid;

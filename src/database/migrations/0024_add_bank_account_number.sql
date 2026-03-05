@@ -1,0 +1,1 @@
+ALTER TABLE "payees" ADD COLUMN "bank_account_no" text;

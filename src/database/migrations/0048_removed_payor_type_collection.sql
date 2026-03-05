@@ -1,0 +1,1 @@
+ALTER TABLE "collections" DROP COLUMN "payor_type";

@@ -1,0 +1,1 @@
+ALTER TABLE "modification_details" ADD COLUMN "user_id" uuid;

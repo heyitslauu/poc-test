@@ -1,0 +1,482 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768214147151,
+      "tag": "0000_create_offices_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768360589519,
+      "tag": "0001_add_paps_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768386836135,
+      "tag": "0002_add_rca_rca_sub_objects_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1768807898082,
+      "tag": "0003_create_allotments_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1768964867464,
+      "tag": "0004_create_allotment_drafts_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1769049880309,
+      "tag": "0005_create_allotment_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1769128290958,
+      "tag": "0006_create_modifications_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1769221940974,
+      "tag": "0007_create_modification_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1769235599314,
+      "tag": "0008_update_modifications_field",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1769480590063,
+      "tag": "0009_add_allotment_code",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1769500601703,
+      "tag": "0010_create_sub_aro_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1769567737238,
+      "tag": "0011_create_sub_aro_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1769583571969,
+      "tag": "0012_move_office_from_sub_aro_details_to_sub_aros",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1769663288814,
+      "tag": "0013_rename_modification_request_id_to_modification_code",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1769675181101,
+      "tag": "0014_create_withdrawals_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1769687342992,
+      "tag": "0015_add_employees_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1769689140521,
+      "tag": "0016_create_withdrawal_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1769734366063,
+      "tag": "0017_add_payees_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1769742721990,
+      "tag": "0018_update_employees_add_inactive_employee_num_attributes",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1769746324083,
+      "tag": "0019_create_obligations_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1769750027578,
+      "tag": "0020_set_userid_nullable",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1769829220692,
+      "tag": "0021_create_obligation_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1770002352536,
+      "tag": "0022_add_disbursement_vouchers_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1770024264579,
+      "tag": "0023_remove_landbank_no",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1770077593911,
+      "tag": "0024_add_bank_account_number",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1770088677688,
+      "tag": "0025_add_workflow_id_in_allotments_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1770090786278,
+      "tag": "0026_modify_obligation_details_allotment_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1770097721573,
+      "tag": "0027_update_dv_constraint_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1770102465658,
+      "tag": "0028_update_modification_details_amount_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1770113631220,
+      "tag": "0029_update_dv_status_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1770167559417,
+      "tag": "0030_create_journal_entries_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1770184577221,
+      "tag": "0031_withdrawal_allotment_to_sub_aro",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1770188882440,
+      "tag": "0032_add_payments_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1770190688585,
+      "tag": "0033_add_disbursement_obligations_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1770256521580,
+      "tag": "0034_add_payment_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1770260681820,
+      "tag": "0035_add_peer_review_enum_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1770356973115,
+      "tag": "0036_update_sub_aro_details_amount_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1770604915690,
+      "tag": "0037_added_bank_account_no",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1770618240640,
+      "tag": "0038_update_modification_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1770775202423,
+      "tag": "0039_add_collections_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1770792681855,
+      "tag": "0040_add_remark_status_collection",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1770875475069,
+      "tag": "0041_update_set_nullable_obligation_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1770880427717,
+      "tag": "0042_add_collection_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1771208488093,
+      "tag": "0043_add_deposit_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1771230521421,
+      "tag": "0044_add_deposit_collection_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1771230658300,
+      "tag": "0045_add_deposit_journal_entries_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1771296132851,
+      "tag": "0046_collection_details_pap_optional",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1771296246233,
+      "tag": "0047_added_receieve_status_dv",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1771296760299,
+      "tag": "0048_removed_payor_type_collection",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1771834392932,
+      "tag": "0049_create_earmarks_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1771901128455,
+      "tag": "0050_create_earmark_details_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1771979331532,
+      "tag": "0051_add_file_imports_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1772010668310,
+      "tag": "0052_make_employee_user_id_nullable",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1772014490150,
+      "tag": "0053_update_code_length",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1772014528261,
+      "tag": "0054_add_office_key_to_office",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1772014571792,
+      "tag": "0055_rename_offices_to_field_offices",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1772063144940,
+      "tag": "0056_added_workflowid_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1772073109487,
+      "tag": "0057_Added_WorkflowId_Modification",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1772073144767,
+      "tag": "0058_Added_WorkflowId_Sub_Aro",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1772073169957,
+      "tag": "0059_Added_Withdrawal",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1772073207867,
+      "tag": "0060_Added_WorkFlowId_Obligations",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1772073231697,
+      "tag": "0061_Added_WorkFlowId_Earmarks",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1772073290317,
+      "tag": "0062_Added_WorkFlowId_Disbursement",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1772073316335,
+      "tag": "0063_Added_WorkFlowId_Payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1772073336759,
+      "tag": "0064_Added_WorkFlowId_Deposits",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1772091095550,
+      "tag": "0065_add_balance_to_allotment_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1772091388762,
+      "tag": "0066_add_user_id_to_modification_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1772092184227,
+      "tag": "0067_add_office_pap_rca_to_modificationn_details",
+      "breakpoints": true
+    }
+  ]
+}

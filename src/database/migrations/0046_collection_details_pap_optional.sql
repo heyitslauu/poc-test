@@ -1,0 +1,1 @@
+ALTER TABLE "collection_details" ALTER COLUMN "paps_id" DROP NOT NULL;

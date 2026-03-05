@@ -1,0 +1,10 @@
+ALTER TABLE "modification_details" DROP CONSTRAINT "only_one_detail_reference";--> statement-breakpoint
+ALTER TABLE "modification_details" ADD COLUMN "office_id" uuid;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD COLUMN "pap_id" uuid;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD COLUMN "rca_id" uuid;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD COLUMN "rca_sub_object_id" uuid;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD CONSTRAINT "modification_details_office_id_field_offices_id_fk" FOREIGN KEY ("office_id") REFERENCES "public"."field_offices"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD CONSTRAINT "modification_details_pap_id_paps_id_fk" FOREIGN KEY ("pap_id") REFERENCES "public"."paps"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD CONSTRAINT "modification_details_rca_id_revised_chart_of_accounts_id_fk" FOREIGN KEY ("rca_id") REFERENCES "public"."revised_chart_of_accounts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD CONSTRAINT "modification_details_rca_sub_object_id_rca_sub_objects_id_fk" FOREIGN KEY ("rca_sub_object_id") REFERENCES "public"."rca_sub_objects"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "modification_details" ADD CONSTRAINT "only_one_detail_reference" CHECK (("modification_details"."action" = 'ADD') OR ("modification_details"."action" = 'SUBTRACT' AND (("modification_details"."allotment_details_id" IS NOT NULL AND "modification_details"."sub_aro_details_id" IS NULL) OR ("modification_details"."allotment_details_id" IS NULL AND "modification_details"."sub_aro_details_id" IS NOT NULL))));

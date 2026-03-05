@@ -1,0 +1,1 @@
+ALTER TYPE "public"."disbursement_status" ADD VALUE 'FOR_PEER_REVIEW' BEFORE 'FOR_APPROVAL';

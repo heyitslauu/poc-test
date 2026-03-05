@@ -1,0 +1,1 @@
+ALTER TABLE "obligations" ADD COLUMN "workflow_id" uuid;

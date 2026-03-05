@@ -1,0 +1,1 @@
+ALTER TABLE "journal_entries" ALTER COLUMN "obligation_detail_id" DROP NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE "earmarks" ADD COLUMN "workflow_id" uuid;

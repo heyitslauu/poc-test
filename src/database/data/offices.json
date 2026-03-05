@@ -1,0 +1,94 @@
+[
+  {
+    "name": "DEPARTMENT OF SOCIAL WELFARE AND DEVELOPMENT",
+    "code": "20-000-00-00000"
+  },
+  {
+    "name": "Office of the Secretary",
+    "code": "20-001-00-00000"
+  },
+  {
+    "name": "Central Office",
+    "code": "20-001-01-00000"
+  },
+  {
+    "name": "Regional Office - NCR",
+    "code": "20-001-03-00013"
+  },
+  {
+    "name": "Regional Office - I",
+    "code": "20-001-03-00001"
+  },
+  {
+    "name": "Regional Office - CAR",
+    "code": "20-001-03-00014"
+  },
+  {
+    "name": "Regional Office - II",
+    "code": "20-001-03-00002"
+  },
+  {
+    "name": "Regional Office - III",
+    "code": "20-001-03-00003"
+  },
+  {
+    "name": "Regional Office - IVA",
+    "code": "20-001-03-00004"
+  },
+  {
+    "name": "Regional Office - IVB",
+    "code": "20-001-03-00017"
+  },
+  {
+    "name": "Regional Office - V",
+    "code": "20-001-03-00005"
+  },
+  {
+    "name": "Regional Office - VI",
+    "code": "20-001-03-00006"
+  },
+  {
+    "name": "Regional Office - VII",
+    "code": "20-001-03-00007"
+  },
+  {
+    "name": "Regional Office - VIII",
+    "code": "20-001-03-00008"
+  },
+  {
+    "name": "Regional Office - IX",
+    "code": "20-001-03-00009"
+  },
+  {
+    "name": "Regional Office - X",
+    "code": "20-001-03-00010"
+  },
+  {
+    "name": "Regional Office - XI",
+    "code": "20-001-03-00011"
+  },
+  {
+    "name": "Regional Office - XII",
+    "code": "20-001-03-00012"
+  },
+  {
+    "name": "Regional Office - XIII",
+    "code": "20-001-03-00016"
+  },
+  {
+    "name": "Council for the Welfare of Children",
+    "code": "20-002-00-00000"
+  },
+  {
+    "name": "Inter-Country Adoption Board",
+    "code": "20-003-00-00000"
+  },
+  {
+    "name": "National Council on Disability Affairs",
+    "code": "20-004-00-00000"
+  },
+  {
+    "name": "National Youth Commission",
+    "code": "20-005-00-00000"
+  }
+]

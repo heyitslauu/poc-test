@@ -1,0 +1,1 @@
+ALTER TABLE "sub_aros" ADD COLUMN "workflow_id" uuid;

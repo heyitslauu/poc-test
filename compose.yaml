@@ -1,0 +1,57 @@
+services:
+  empowerx-fsds-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: empowerx-fsds-api
+    image: empowerx-fsds-api:latest
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs:rw
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_SSL: ${POSTGRES_SSL}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      CORS_METHODS: ${CORS_METHODS}
+      CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS}
+      CORS_CREDENTIALS: ${CORS_CREDENTIALS}
+    depends_on:
+      empowerx-fsds-db:
+        condition: service_healthy
+    networks:
+      - empowerx-net
+
+  empowerx-fsds-db:
+    image: postgres:18-alpine
+    container_name: empowerx-fsds-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - empowerx-fsds-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - empowerx-net
+
+volumes:
+  empowerx-fsds-db-data:
+    name: empowerx-fsds-db-data
+    external: true
+
+networks:
+  empowerx-net:
+    name: empowerx-net
+    external: true

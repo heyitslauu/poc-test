@@ -1,0 +1,1 @@
+ALTER TABLE "modification_details" ALTER COLUMN "amount" SET DATA TYPE bigint;
