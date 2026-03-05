@@ -22,6 +22,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { DepositsModule } from './modules/deposits/deposits.module';
 import { EarmarksModule } from './modules/earmarks/earmarks.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -95,5 +96,6 @@ import { EarmarksModule } from './modules/earmarks/earmarks.module';
       useClass: ThrottlerGuard,
     },
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

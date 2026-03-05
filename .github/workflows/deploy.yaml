@@ -47,6 +47,10 @@ jobs:
             sudo docker stop ${{ secrets.APP_NAME }} 2>/dev/null || true
             sudo docker rm ${{ secrets.APP_NAME }} 2>/dev/null || true
 
+            # Ensure logs directory exists with correct ownership (UID 1001 = exfsds in container)
+            mkdir -p ~/app/logs
+            sudo chown -R 1001:1001 ~/app/logs
+
             # Write env file and export image name
             echo "$ENV_FILE_CONTENT" > .env
             echo "DOCKER_IMAGE=${DOCKER_IMAGE}" >> .env
