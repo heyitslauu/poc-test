@@ -38,6 +38,8 @@ async function bootstrap() {
   const corsOptions = getCorsConfig(configService);
   app.enableCors(corsOptions);
 
+  app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -88,14 +90,14 @@ async function bootstrap() {
     },
   });
 
-  logger.log(`Swagger UI is available at ${appUrl}/docs`);
+  logger.log(`Swagger UI is available at ${appUrl}/api/docs`);
   logger.log(
-    `Ensure this Return URL is added to your Cognito App Client settings: ${appUrl}/docs/oauth2-redirect.html`,
+    `Ensure this Return URL is added to your Cognito App Client settings: ${appUrl}/api/docs/oauth2-redirect.html`,
   );
 
   await app.listen(port, '0.0.0.0');
 
   logger.log(`🚀 Application is running on: http://localhost:${port}`);
-  logger.log(`📚 API Documentation available at: http://localhost:${port}/docs`);
+  logger.log(`📚 API Documentation available at: http://localhost:${port}/api/docs`);
 }
 void bootstrap();
