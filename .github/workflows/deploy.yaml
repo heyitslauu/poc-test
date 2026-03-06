@@ -52,7 +52,6 @@ jobs:
 
       - name: Upload docker-compose to S3
         run: |
-          # Set the path in S3 dynamically
           S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
 
           echo "Uploading docker-compose.yml to $S3_PATH"
