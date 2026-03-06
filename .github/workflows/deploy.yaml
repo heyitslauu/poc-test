@@ -58,7 +58,7 @@ jobs:
           echo "Uploading docker-compose.yml to $S3_PATH"
 
           # Upload
-          aws s3 cp docker-compose.yml $S3_PATH
+          aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
