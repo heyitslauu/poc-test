@@ -1,17 +1,19 @@
-name: Build and Deploy
-
+name: CI/CD - Build, Push to ECR, Deploy
 on:
   push:
     branches:
+      - dev
+      - staging
       - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      SERVICE_NAME: ${{ secrets.SERVICE_NAME }} # Add this to your repository secrets
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }} # Add this to your repository secrets
-      AWS_REGION: ${{ secrets.AWS_REGION }} # Add this to your repository secrets
+      SERVICE_NAME: ${{ secrets.SERVICE_NAME }} # Add this to your repository secrets e.g. "my-service"
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }} # Add this to your repository secrets e,g. "123456789012"
+      AWS_REGION: ${{ secrets.AWS_REGION }} # Add this to your repository secrets e.g. "us-east-1"
+      ASG_NAME: ${{ secrets.ASG_NAME }} # Add this to your repository secrets e.g "my-asg"
     steps:
       - uses: actions/checkout@v3
 
@@ -19,26 +21,40 @@ jobs:
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             echo "ENVIRONMENT=prod" >> $GITHUB_ENV
-            echo "ENV_TAG=prod-${GITHUB_SHA}" >> $GITHUB_ENV
+            echo "ENV_TAG=prod-latest" >> $GITHUB_ENV
           elif [[ "${GITHUB_REF_NAME}" == "dev" ]]; then
             echo "ENVIRONMENT=dev" >> $GITHUB_ENV
             echo "ENV_TAG=dev-latest" >> $GITHUB_ENV
           else
             echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-            echo "ENV_TAG=staging-${GITHUB_SHA}" >> $GITHUB_ENV
+            echo "ENV_TAG=staging-latest" >> $GITHUB_ENV
           fi
 
       - name: Login to ECR
         run: |
           aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login \
             --username AWS \
-            --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}
+            --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Build Docker Image
         run: docker build -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }} .
+        env:
+          ENV_TAG: ${{ env.ENV_TAG }}
 
       - name: Push Image
         run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }}
+
+        env:
+          ENV_TAG: ${{ env.ENV_TAG }}
+      - name: Trigger Instance Refresh
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name ${{ secrets.ASG_NAME }} \
+            --region ${{ env.AWS_REGION }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ASG_NAME: ${{ secrets.ASG_NAME }}
