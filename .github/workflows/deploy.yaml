@@ -56,7 +56,6 @@ jobs:
       - name: Generate docker-compose.yml
         run: |
           cat > docker-compose.yml <<EOL
-          version: '3.9'
           services:
             app:
               image: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }}
@@ -68,14 +67,21 @@ jobs:
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
+      - name: Generate .env from GitHub Secret
+        run: |
+          echo "${{ secrets.CLEAN_ENV }}" > .env
+
       # 6️⃣ Upload to S3
       - name: Upload docker-compose to S3
         run: |
           S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
+          S3_ENV_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/.env"
 
           echo "Uploading docker-compose.yml to $S3_PATH"
+          echo "Uploading .env to $S3_ENV_PATH"
 
           # Upload
+          aws s3 cp .env $S3_ENV_PATH --region $AWS_REGION
           aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
