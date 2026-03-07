@@ -44,7 +44,6 @@ jobs:
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
-      # 5️⃣ Generate environment-specific docker-compose.yml
       - name: Generate docker-compose.yml
         run: |
           cat > docker-compose.yml <<EOL
@@ -58,19 +57,24 @@ jobs:
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
-      # 6️⃣ Generate .env from GitHub Secret
       - name: Generate .env from GitHub Secret
         run: echo "${{ secrets.CLEAN_ENV }}" > .env
 
-      # 7️⃣ Upload to S3
+      - name: Push Image
+        run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }}
+
+        env:
+          ENV_TAG: ${{ env.ENV_TAG }}
+
       - name: Upload docker-compose to S3
         run: |
+
           S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
           S3_ENV_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/.env"
 
           echo "Uploading docker-compose.yml to $S3_PATH"
-          echo "Uploading .env to $S3_ENV_PATH"
 
+          # Upload
           aws s3 cp .env $S3_ENV_PATH --region $AWS_REGION
           aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
         env:
@@ -79,8 +83,6 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
           ENV_TAG: ${{ env.ENV_TAG }}
-
-      # 8️⃣ Trigger ASG Instance Refresh
       - name: Trigger Instance Refresh
         run: |
           aws autoscaling start-instance-refresh \
