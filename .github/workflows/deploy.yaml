@@ -44,15 +44,17 @@ jobs:
 
       # 4️⃣ Build & push Docker image
       - name: Build and Push Docker Image
-        run: |
-          IMAGE_URI=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }}
-          docker build -t $IMAGE_URI .
-          docker push $IMAGE_URI
+        run: docker build -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }} .
+        env:
+          ENV_TAG: ${{ env.ENV_TAG }}
+
+      - name: Push Image
+        run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }}
 
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
-      # 5️⃣ Generate environment-specific docker-compose.ym
+      # 5️⃣ Generate environment-specific docker-compose.yml
       - name: Generate docker-compose.yml
         run: |
           cat > docker-compose.yml <<EOL
