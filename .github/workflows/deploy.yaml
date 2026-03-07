@@ -10,10 +10,10 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      SERVICE_NAME: ${{ secrets.SERVICE_NAME }} # Add this to your repository secrets e.g. "my-service"
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }} # Add this to your repository secrets e,g. "123456789012"
-      AWS_REGION: ${{ secrets.AWS_REGION }} # Add this to your repository secrets e.g. "us-east-1"
-      ASG_NAME: ${{ secrets.ASG_NAME }} # Add this to your repository secrets e.g "my-asg"
+      SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ASG_NAME: ${{ secrets.ASG_NAME }}
     steps:
       # 1️⃣ Checkout repo
       - uses: actions/checkout@v3
@@ -42,14 +42,14 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # 4️⃣ Build & push Docker image
+      # 4️⃣ Build & push Docker image (single step)
       - name: Build and Push Docker Image
-        run: docker build -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }} .
-        env:
-          ENV_TAG: ${{ env.ENV_TAG }}
-
-      - name: Build Docker Image
-        run: docker build -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }} .
+        run: |
+          docker buildx create --use
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }} \
+            --push .
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
@@ -64,15 +64,14 @@ jobs:
               ports:
                 - "80:3000"
           EOL
-
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
+      # 6️⃣ Generate .env from GitHub Secret
       - name: Generate .env from GitHub Secret
-        run: |
-          echo "${{ secrets.CLEAN_ENV }}" > .env
+        run: echo "${{ secrets.CLEAN_ENV }}" > .env
 
-      # 6️⃣ Upload to S3
+      # 7️⃣ Upload to S3
       - name: Upload docker-compose to S3
         run: |
           S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
@@ -81,7 +80,6 @@ jobs:
           echo "Uploading docker-compose.yml to $S3_PATH"
           echo "Uploading .env to $S3_ENV_PATH"
 
-          # Upload
           aws s3 cp .env $S3_ENV_PATH --region $AWS_REGION
           aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
         env:
@@ -91,7 +89,7 @@ jobs:
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
           ENV_TAG: ${{ env.ENV_TAG }}
 
-      # 7️⃣ Trigger ASG Instance Refresh
+      # 8️⃣ Trigger ASG Instance Refresh
       - name: Trigger Instance Refresh
         run: |
           aws autoscaling start-instance-refresh \
