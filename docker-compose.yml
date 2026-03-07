@@ -1,7 +1,5 @@
 services:
   app:
-    env_file: .env
-    image: 619071352095.dkr.ecr.ap-southeast-1.amazonaws.com/${APP_NAME}:${ENV_TAG}
-    container_name: ${APP_NAME}-api
+    image: 619071352095.dkr.ecr.ap-southeast-1.amazonaws.com/empowerx-fsds
     ports:
       - "80:3000"
