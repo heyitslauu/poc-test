@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      SERVICE_NAME: ${{ secrets.SERVICE_NAME }} # Add this to your repository secrets
+      SERVICE_NAME: ${{ secrets.SERVICE_NAME }} # Add this to your repository secrets (e.g., "my-service")
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }} # Add this to your repository secrets
       AWS_REGION: ${{ secrets.AWS_REGION }} # Add this to your repository secrets
     steps:
