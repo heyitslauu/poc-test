@@ -1,4 +1,5 @@
 name: CI/CD - Build, Push to ECR, Deploy
+
 on:
   push:
     branches:
@@ -10,13 +11,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      SERVICE_NAME: ${{ secrets.SERVICE_NAME }} # Add this to your repository secrets e.g. "my-service"
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }} # Add this to your repository secrets e,g. "123456789012"
-      AWS_REGION: ${{ secrets.AWS_REGION }} # Add this to your repository secrets e.g. "us-east-1"
-      ASG_NAME: ${{ secrets.ASG_NAME }} # Add this to your repository secrets e.g "my-asg"
+      SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ASG_NAME: ${{ secrets.ASG_NAME }}
+
     steps:
       - uses: actions/checkout@v3
 
+      # 1️⃣ Set environment variables based on branch
       - name: Set Environment Variables
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
@@ -30,6 +33,7 @@ jobs:
             echo "ENV_TAG=staging-latest" >> $GITHUB_ENV
           fi
 
+      # 2️⃣ Login to AWS ECR
       - name: Login to ECR
         run: |
           aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login \
@@ -39,11 +43,18 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Build Docker Image
-        run: docker build -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }} .
+      # 3️⃣ Build & Push Docker Image using Buildx
+      - name: Build & Push Docker Image to ECR
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }} \
+            --push \
+            .
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
+      # 4️⃣ Generate environment-specific docker-compose.yml
       - name: Generate docker-compose.yml
         run: |
           cat > docker-compose.yml <<EOL
@@ -57,24 +68,19 @@ jobs:
         env:
           ENV_TAG: ${{ env.ENV_TAG }}
 
+      # 5️⃣ Generate .env from GitHub Secret
       - name: Generate .env from GitHub Secret
         run: echo "${{ secrets.CLEAN_ENV }}" > .env
 
-      - name: Push Image
-        run: docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.SERVICE_NAME }}:${{ env.ENV_TAG }}
-
-        env:
-          ENV_TAG: ${{ env.ENV_TAG }}
-
-      - name: Upload docker-compose to S3
+      # 6️⃣ Upload docker-compose.yml and .env to S3
+      - name: Upload docker-compose.yml and .env to S3
         run: |
-
           S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
           S3_ENV_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/.env"
 
           echo "Uploading docker-compose.yml to $S3_PATH"
+          echo "Uploading .env to $S3_ENV_PATH"
 
-          # Upload
           aws s3 cp .env $S3_ENV_PATH --region $AWS_REGION
           aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
         env:
@@ -83,7 +89,9 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
           ENV_TAG: ${{ env.ENV_TAG }}
-      - name: Trigger Instance Refresh
+
+      # 7️⃣ Trigger ASG Instance Refresh
+      - name: Trigger ASG Instance Refresh
         run: |
           aws autoscaling start-instance-refresh \
             --auto-scaling-group-name ${{ secrets.ASG_NAME }} \
