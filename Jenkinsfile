@@ -7,12 +7,51 @@ pipeline {
         timestamps()
     }
 
+    environment {
+        AWS_REGION = "ap-southeast-1"
+        SERVICE_NAME = "my-service"
+        AWS_ACCOUNT_ID = "123456789012"
+        ASG_NAME = "my-asg"
+    }
+
     stages {
 
-        stage('Checkout') {
+        stage('Install Dependencies') {
             steps {
-                checkout scm
+                sh '''
+                echo "Installing dependencies..."
+
+                # Install AWS CLI v2 if not installed
+                if ! command -v aws &> /dev/null; then
+                  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                  unzip awscliv2.zip
+                  sudo ./aws/install
+                  rm -rf awscliv2.zip aws/
+                fi
+
+                # Install Docker if not installed
+                if ! command -v docker &> /dev/null; then
+                  sudo apt-get update
+                  sudo apt-get install -y docker.io docker-compose-plugin
+                fi
+
+                # Ensure Docker daemon is running
+                sudo systemctl start docker
+                sudo systemctl enable docker
+
+                # Setup Docker Buildx
+                docker buildx create --use || true
+
+                # Verify versions
+                aws --version
+                docker --version
+                docker buildx version
+                '''
             }
+        }
+
+        stage('Checkout') {
+            steps { checkout scm }
         }
 
         stage('Set Environment Variables') {
@@ -39,11 +78,8 @@ pipeline {
                     string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
-                    aws ecr describe-repositories \
-                      --repository-names $SERVICE_NAME \
-                    || aws ecr create-repository \
-                      --repository-name $SERVICE_NAME \
-                      --region $AWS_REGION
+                    aws ecr describe-repositories --repository-names $SERVICE_NAME \
+                    || aws ecr create-repository --repository-name $SERVICE_NAME --region $AWS_REGION
                     '''
                 }
             }
@@ -65,18 +101,35 @@ pipeline {
         }
 
         stage('Build and Push Docker Image') {
-            steps {
-                sh '''
-                IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG
-
-                docker buildx create --use || true
-
-                docker buildx build \
-                  --platform linux/amd64,linux/arm64 \
-                  -t $IMAGE \
-                  --push \
-                  .
-                '''
+            parallel {
+                stage('Build amd64') {
+                    steps {
+                        sh '''
+                        IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG-amd64
+                        docker buildx build \
+                          --platform linux/amd64 \
+                          -t $IMAGE \
+                          --push \
+                          --cache-from=type=registry,ref=$IMAGE \
+                          --cache-to=type=registry,mode=max,ref=$IMAGE \
+                          .
+                        '''
+                    }
+                }
+                stage('Build arm64') {
+                    steps {
+                        sh '''
+                        IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG-arm64
+                        docker buildx build \
+                          --platform linux/arm64 \
+                          -t $IMAGE \
+                          --push \
+                          --cache-from=type=registry,ref=$IMAGE \
+                          --cache-to=type=registry,mode=max,ref=$IMAGE \
+                          .
+                        '''
+                    }
+                }
             }
         }
 
@@ -86,7 +139,7 @@ pipeline {
                 cat > docker-compose.yml <<EOL
                 services:
                   app:
-                    image: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG
+                    image: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG-amd64
                     container_name: $SERVICE_NAME-api
                     ports:
                       - "80:3000"
