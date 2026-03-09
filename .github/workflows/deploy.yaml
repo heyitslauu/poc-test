@@ -93,7 +93,10 @@ jobs:
               image: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG
               container_name: $SERVICE_NAME-api
               ports:
-                - "80:3000"
+                - "3000:3000"
+              env_file:
+                - .env
+              command: sh -c "/app/deployment/migration.sh && node dist/src/main.js"
           EOL
 
       # 7️⃣ Generate .env from GitHub Secret
