@@ -97,20 +97,18 @@ jobs:
           EOL
 
       # 7️⃣ Generate .env from GitHub Secret
-      - name: Generate .env from GitHub Secret
-        run: echo "${{ env.CLEAN_ENV }}" > .env
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
 
         env:
-          CLEAN_ENV: ${{ env.CLEAN_ENV }}
+          ENV_FILE: ${{ env.ENV_FILE }}
 
       # 8️⃣ Upload docker-compose.yml and .env to S3
       - name: Upload docker-compose.yml and .env to S3
         run: |
           S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
           S3_ENV_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/.env"
-
-          echo "Uploading docker-compose.yml to $S3_PATH"
-          echo "Uploading .env to $S3_ENV_PATH"
 
           aws s3 cp .env $S3_ENV_PATH --region $AWS_REGION
           aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
