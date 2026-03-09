@@ -99,16 +99,27 @@ jobs:
       # 7️⃣ Generate .env from GitHub Secret
       - name: Create .env file
         run: |
-          echo "${{ secrets.ENV_FILE }}" > .env
-
-        env:
-          ENV_FILE: ${{ env.ENV_FILE }}
+          if [[ "${GITHUB_REF_NAME}" == "dev" ]]; then
+            echo "${{ secrets.ENV_FILE_DEV }}" > .env
+          elif [[ "${GITHUB_REF_NAME}" == "staging" ]]; then
+            echo "${{ secrets.ENV_FILE_STAGING }}" > .env
+          elif [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "${{ secrets.ENV_FILE_PROD }}" > .env
+          else
+            echo "Branch not recognized, using default ENV_FILE"
+            echo "${{ secrets.ENV_FILE }}" > .env
+          fi
 
       # 8️⃣ Upload docker-compose.yml and .env to S3
       - name: Upload docker-compose.yml and .env to S3
         run: |
           S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
           S3_ENV_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/.env"
+
+          echo "Uploading docker-compose.yml to $S3_PATH"
+          echo "Uploading .env to $S3_ENV_PATH"
+          echo "docker compose content:"
+          cat docker-compose.yml
 
           aws s3 cp .env $S3_ENV_PATH --region $AWS_REGION
           aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
