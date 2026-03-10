@@ -50,8 +50,9 @@ RUN apk add --no-cache ca-certificates wget && update-ca-certificates
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-# Copy RDS CA cert for SSL validation
-COPY rds-ca.pem /etc/ssl/certs/rds-ca.pem
+# Download Amazon RDS CA cert during build
+RUN wget -O /etc/ssl/certs/rds-ca.pem \
+    https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
 # Copy application code
 COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
