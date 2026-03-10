@@ -31,7 +31,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml ./
 
-# Only production dependencies
+# Install only production dependencies
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # ============================================
@@ -40,16 +40,24 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 FROM node:22-alpine AS production
 
 ENV NODE_ENV=production
+# Quick fix for self-signed RDS certs
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
 WORKDIR /app
 
 # Install CA certificates + wget for healthchecks
 RUN apk add --no-cache ca-certificates wget && update-ca-certificates
 
-# Add non-root user
+# Create non-root user
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
 
-# Copy application code
+# Create directories for logs and certs
+RUN mkdir -p /app/logs /app/certs && \
+    chown -R appuser:appgroup /app/logs /app/certs && \
+    chmod -R 700 /app/certs /app/logs
+
+# Copy application code with correct ownership
 COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
 COPY --from=builder --chown=appuser:appgroup /app/deployment ./deployment
 COPY --from=deps --chown=appuser:appgroup /app/node_modules ./node_modules
@@ -57,18 +65,19 @@ COPY --from=builder --chown=appuser:appgroup /app/src/database ./src/database
 COPY --from=builder --chown=appuser:appgroup /app/drizzle.config.ts ./drizzle.config.ts
 COPY --chown=appuser:appgroup --chmod=755 entrypoint.sh /entrypoint.sh
 
-# Make scripts executable
+# Make all deployment scripts executable
 RUN find /app/deployment -type f -name "*.sh" -exec chmod 755 {} \;
 
-# Create logs directory
-RUN mkdir -p /app/logs && chown -R appuser:appgroup /app/logs && chmod -R 755 /app/logs
-
+# Switch to non-root user
 USER appuser
 
+# Expose application port
 EXPOSE 3000
 
+# Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget -qO- http://localhost:3000/health || exit 1
 
+# Entrypoint + default command
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/src/main.js"]
