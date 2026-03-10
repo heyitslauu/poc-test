@@ -8,7 +8,7 @@ WORKDIR /app
 # Install pnpm globally
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy package files first for better layer caching
+# Copy package files for caching
 COPY package.json pnpm-lock.yaml ./
 
 # Install all dependencies
@@ -17,11 +17,8 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Clean previous build
-RUN rm -rf dist
-
 # Build the application
-RUN pnpm build
+RUN rm -rf dist && pnpm build
 
 # ============================================
 # Stage 2: Production Dependencies
@@ -34,7 +31,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml ./
 
-# Install only production dependencies
+# Only production dependencies
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # ============================================
@@ -46,34 +43,36 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-RUN apk add --no-cache wget
+# Install CA certificates + wget for healthchecks
+RUN apk add --no-cache ca-certificates wget && update-ca-certificates
 
-# Create non-root user
-RUN addgroup -g 1001 -S exfsds && \
-    adduser -u 1001 -S exfsds -G exfsds
+# Add non-root user
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
 
-# Copy dist from builder and node_modules from deps
-COPY --from=builder --chown=exfsds:exfsds /app/dist ./dist
-COPY --from=builder --chown=exfsds:exfsds /app/deployment ./deployment
-COPY --from=deps --chown=exfsds:exfsds /app/node_modules ./node_modules
-COPY --from=builder --chown=exfsds:exfsds /app/src/database ./src/database
-COPY --from=builder --chown=exfsds:exfsds /app/drizzle.config.ts ./drizzle.config.ts
-COPY --chown=exfsds:exfsds --chmod=755 entrypoint.sh /entrypoint.sh
+# Copy RDS CA cert for SSL validation
+COPY rds-ca.pem /etc/ssl/certs/rds-ca.pem
 
+# Copy application code
+COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
+COPY --from=builder --chown=appuser:appgroup /app/deployment ./deployment
+COPY --from=deps --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app/src/database ./src/database
+COPY --from=builder --chown=appuser:appgroup /app/drizzle.config.ts ./drizzle.config.ts
+COPY --chown=appuser:appgroup --chmod=755 entrypoint.sh /entrypoint.sh
+
+# Make scripts executable
 RUN find /app/deployment -type f -name "*.sh" -exec chmod 755 {} \;
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Create logs directory
+RUN mkdir -p /app/logs && chown -R appuser:appgroup /app/logs && chmod -R 755 /app/logs
 
-# Create logs directory with proper permissions
-RUN mkdir -p /app/logs && \
-    chown -R exfsds:exfsds /app/logs && \
-    chmod -R 755 /app/logs
-
-USER exfsds
+USER appuser
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget -qO- http://localhost:3000/health || exit 1
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/src/main.js"]
