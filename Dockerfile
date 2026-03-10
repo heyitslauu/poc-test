@@ -40,7 +40,6 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 FROM node:22-alpine AS production
 
 ENV NODE_ENV=production
-
 WORKDIR /app
 
 # Install CA certificates + wget for healthchecks
@@ -49,10 +48,6 @@ RUN apk add --no-cache ca-certificates wget && update-ca-certificates
 # Add non-root user
 RUN addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -S appuser -G appgroup
-
-# Download Amazon RDS CA cert during build
-RUN wget -O /etc/ssl/certs/rds-ca.pem \
-    https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
 # Copy application code
 COPY --from=builder --chown=appuser:appgroup /app/dist ./dist

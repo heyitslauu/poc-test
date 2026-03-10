@@ -7,27 +7,29 @@ export interface DatabaseConfig {
   user: string;
   password: string;
   database: string;
-  ssl: boolean | { rejectUnauthorized: boolean };
+  ssl: boolean | { rejectUnauthorized: boolean; ca?: string };
 }
 
 export const DATABASE_CONNECTION = 'database_connection';
 
-export const getDatabaseConfig = (configService: ConfigService<Record<string, string>>): DatabaseConfig => {
+export const getDatabaseConfig = (configService: ConfigService<Record<string, string>>) => {
   const sslEnv = configService.get('POSTGRES_SSL')?.toLowerCase();
 
   let ssl: boolean | { rejectUnauthorized: boolean; ca?: string } = false;
 
   if (sslEnv === 'true') {
-    // Production: validate SSL with RDS CA
+    const caPath = '/app/certs/rds-ca.pem';
+    if (!fs.existsSync(caPath)) {
+      throw new Error(`RDS CA cert not found at ${caPath}`);
+    }
+
     ssl = {
       rejectUnauthorized: true,
-      ca: fs.readFileSync('/etc/ssl/certs/rds-ca.pem', 'utf-8'),
+      ca: fs.readFileSync(caPath, 'utf-8'),
     };
   }
 
-  if (sslEnv === 'false') ssl = false; // Local dev
-
-  const dbConfig: DatabaseConfig = {
+  return {
     host: configService.getOrThrow('POSTGRES_HOST'),
     port: parseInt(configService.getOrThrow('POSTGRES_PORT'), 10),
     user: configService.getOrThrow('POSTGRES_USER'),
@@ -35,14 +37,4 @@ export const getDatabaseConfig = (configService: ConfigService<Record<string, st
     database: configService.getOrThrow('POSTGRES_DB'),
     ssl,
   };
-
-  console.log('[DatabaseModule] DB Config:', {
-    host: dbConfig.host,
-    port: dbConfig.port,
-    user: dbConfig.user,
-    database: dbConfig.database,
-    ssl: sslEnv === 'true' ? 'RDS CA' : false,
-  });
-
-  return dbConfig;
 };
