@@ -46,6 +46,8 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
+RUN apk add --no-cache wget
+
 # Create non-root user
 RUN addgroup -g 1001 -S exfsds && \
     adduser -u 1001 -S exfsds -G exfsds
@@ -56,6 +58,11 @@ COPY --from=builder --chown=exfsds:exfsds /app/deployment ./deployment
 COPY --from=deps --chown=exfsds:exfsds /app/node_modules ./node_modules
 COPY --from=builder --chown=exfsds:exfsds /app/src/database ./src/database
 COPY --from=builder --chown=exfsds:exfsds /app/drizzle.config.ts ./drizzle.config.ts
+COPY --chown=exfsds:exfsds --chmod=755 entrypoint.sh /entrypoint.sh
+
+RUN find /app/deployment -type f -name "*.sh" -exec chmod 755 {} \;
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Create logs directory with proper permissions
 RUN mkdir -p /app/logs && \
@@ -67,6 +74,6 @@ USER exfsds
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+  CMD wget -qO- http://localhost:3000/health || exit 1
 
 CMD ["node", "dist/src/main.js"]
