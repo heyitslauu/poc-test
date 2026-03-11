@@ -91,7 +91,7 @@ jobs:
           services:
             app:
               image: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG
-              container_name: $SERVICE_NAME-api
+              container_name: $SERVICE_NAME
               ports:
                 - "3000:3000"
               env_file:

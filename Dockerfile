@@ -76,9 +76,10 @@ EXPOSE 3000
 
 # Update this on each service-stack to match the service name for healthchecks
 ENV SERVICE_NAME=fsds-api
+
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD sh -c 'wget -qO- http://localhost:3000/$SERVICE_NAME/health || exit 1'
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD sh -c 'wget -qO- http://localhost:3000/${SERVICE_NAME:+$SERVICE_NAME/}health || exit 1'
 
 # Entrypoint + default command
 ENTRYPOINT ["/entrypoint.sh"]
