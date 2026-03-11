@@ -16,6 +16,10 @@ async function bootstrap() {
 
   const cognitoDomain = configService.get<string>('AWS_COGNITO_DOMAIN')?.replace(/(^https?:\/\/)|(\/$)/g, '') ?? '';
   const port = process.env.PORT ?? '3000';
+
+  const serviceName = configService.get<string>('SERVICE_NAME');
+  const docsPath = serviceName ? `${serviceName}/docs` : 'docs';
+
   const appUrl = configService.get<string>('APP_URL') ?? `http://localhost:${port}`;
 
   app.useLogger(logger);
@@ -77,27 +81,33 @@ async function bootstrap() {
     )
     .build();
   const documentFactory = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, documentFactory, {
-    swaggerOptions: {
-      oauth: {
-        appName: 'EMPOWERX FSDS API',
-        scopes: ['openid', 'profile', 'email'],
-        usePkceWithAuthorizationCodeGrant: true,
-        useBasicAuthenticationWithAccessCodeGrant: true,
+
+  if (process.env.NODE_ENV !== 'production') {
+    logger.log('Running in non-production environment, enabling Swagger UI');
+  } else {
+    logger.warn('Running in production environment, Swagger UI is enabled. Ensure this is intentional and secure.');
+    SwaggerModule.setup(docsPath, app, documentFactory, {
+      swaggerOptions: {
+        oauth: {
+          appName: 'EMPOWERX FSDS API',
+          scopes: ['openid', 'profile', 'email'],
+          usePkceWithAuthorizationCodeGrant: true,
+          useBasicAuthenticationWithAccessCodeGrant: true,
+        },
+        persistAuthorization: true,
+        oauth2RedirectUrl: `${appUrl}/${docsPath}/oauth2-redirect.html`,
       },
-      persistAuthorization: true,
-      oauth2RedirectUrl: `${appUrl}/docs/oauth2-redirect.html`,
-    },
-  });
+    });
 
-  logger.log(`Swagger UI is available at ${appUrl}/api/docs`);
-  logger.log(
-    `Ensure this Return URL is added to your Cognito App Client settings: ${appUrl}/api/docs/oauth2-redirect.html`,
-  );
+    logger.log(`Swagger UI is available at ${appUrl}/${docsPath}`);
+    logger.log(
+      `Ensure this Return URL is added to your Cognito App Client settings: ${appUrl}/${docsPath}/oauth2-redirect.html`,
+    );
 
-  await app.listen(port, '0.0.0.0');
+    await app.listen(port, '0.0.0.0');
 
-  logger.log(`🚀 Application is running on: http://localhost:${port}`);
-  logger.log(`📚 API Documentation available at: http://localhost:${port}/api/docs`);
+    logger.log(`🚀 Application is running on: http://localhost:${port}`);
+    logger.log(`📚 API Documentation available at: http://localhost:${port}/${serviceName}/docs`);
+  }
 }
 void bootstrap();
