@@ -18,7 +18,7 @@ export const getDatabaseConfig = (configService: ConfigService<Record<string, st
   let ssl: boolean | { rejectUnauthorized: boolean; ca?: string } = false;
 
   if (sslEnv === 'true') {
-    const caPath = '/app/certs/rds-ca.pem';
+    const caPath = '/certs/rds-ca.pem';
     const isRuntime = process.env.RUNTIME_ENV === 'true';
 
     if (fs.existsSync(caPath)) {
