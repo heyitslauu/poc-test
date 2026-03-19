@@ -1,9 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'amazon/aws-cli'
-        }
-    }
+    agent any
 
     options {
         skipDefaultCheckout()
