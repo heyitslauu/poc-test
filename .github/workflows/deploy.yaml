@@ -101,7 +101,6 @@ jobs:
                 - "3000:3000"
               env_file:
                 - .env
-              command: sh -c "/app/deployment/migration.sh && node dist/src/main.js"
           EOL
 
       # 7️⃣ Generate .env from GitHub Secret
