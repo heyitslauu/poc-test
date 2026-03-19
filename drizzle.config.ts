@@ -1,4 +1,5 @@
 import { defineConfig } from 'drizzle-kit';
+import fs from 'fs';
 
 export default defineConfig({
   dialect: 'postgresql',
@@ -10,6 +11,9 @@ export default defineConfig({
     user: process.env.POSTGRES_USER as string,
     password: process.env.POSTGRES_PASSWORD as string,
     database: process.env.POSTGRES_DB as string,
-    ssl: process.env.POSTGRES_SSL !== 'false',
+    ssl: {
+      rejectUnauthorized: true,
+      ca: fs.readFileSync('/app/certs/global-bundle.pem', 'utf-8'),
+    },
   },
 });
