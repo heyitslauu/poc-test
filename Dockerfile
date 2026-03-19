@@ -64,7 +64,6 @@ COPY --from=builder --chown=appuser:appgroup /app/src/database ./src/database
 COPY --from=builder --chown=appuser:appgroup /app/drizzle.config.ts ./drizzle.config.ts
 COPY --chown=appuser:appgroup --chmod=755 entrypoint.sh /entrypoint.sh
 COPY ./app/certs/global-bundle.pem /app/certs/global-bundle.pem
-
 # Make all deployment scripts executable
 RUN find /app/deployment -type f -name "*.sh" -exec chmod 755 {} \;
 
