@@ -42,11 +42,6 @@ jobs:
             echo "ENV_TAG=staging-latest" >> $GITHUB_ENV
           fi
 
-      - name: Download RDS CA Certificate
-        run: |
-          mkdir -p ./app/certs
-          wget https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -O ./app/certs/rds-ca.pem
-
       # 2️⃣ Ensure ECR repository exists
       - name: Create ECR Repository if Not Exists
         run: |
