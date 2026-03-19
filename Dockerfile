@@ -40,8 +40,8 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 FROM node:22-alpine AS production
 
 ENV NODE_ENV=production
-# Quick fix for self-signed RDS certs
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+ENV RUNTIME_ENV=true
+ENV DB_CA_PATH=/app/certs/rds-ca.pem
 
 WORKDIR /app
 
@@ -64,6 +64,7 @@ COPY --from=deps --chown=appuser:appgroup /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appgroup /app/src/database ./src/database
 COPY --from=builder --chown=appuser:appgroup /app/drizzle.config.ts ./drizzle.config.ts
 COPY --chown=appuser:appgroup --chmod=755 entrypoint.sh /entrypoint.sh
+COPY --chown=appuser:appgroup rds-ca.pem /app/certs/rds-ca.pem
 
 # Make all deployment scripts executable
 RUN find /app/deployment -type f -name "*.sh" -exec chmod 755 {} \;

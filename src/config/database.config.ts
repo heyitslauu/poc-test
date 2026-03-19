@@ -18,15 +18,19 @@ export const getDatabaseConfig = (configService: ConfigService<Record<string, st
   let ssl: boolean | { rejectUnauthorized: boolean; ca?: string } = false;
 
   if (sslEnv === 'true') {
-    const caPath = '/app/certs/rds-ca.pem';
-    if (!fs.existsSync(caPath)) {
-      throw new Error(`RDS CA cert not found at ${caPath}`);
-    }
+    const caPath = process.env.DB_CA_PATH || '/app/certs/rds-ca.pem';
+    const isRuntime = process.env.RUNTIME_ENV === 'true';
 
-    ssl = {
-      rejectUnauthorized: true,
-      ca: fs.readFileSync(caPath, 'utf-8'),
-    };
+    if (fs.existsSync(caPath)) {
+      ssl = {
+        rejectUnauthorized: true,
+        ca: fs.readFileSync(caPath, 'utf-8'),
+      };
+    } else if (isRuntime) {
+      throw new Error(`RDS CA cert not found at ${caPath} in runtime environment`);
+    } else {
+      ssl = false;
+    }
   }
 
   return {
