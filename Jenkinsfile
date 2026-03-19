@@ -203,6 +203,14 @@ pipeline {
       stage('Build & Push Docker Image to ECR') {
           steps {
               script {
+                  sh '''
+                      apt-get update || true
+                      apt-get install -y awscli || true
+                  '''
+                  sh '''
+                      # Verify it's installed
+                      aws --version
+                  '''
                   ws("${env.CUSTOM_WORKSPACE}") {
                       withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-laurence', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                       sh '''
