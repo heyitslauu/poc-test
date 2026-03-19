@@ -41,7 +41,6 @@ FROM node:22-alpine AS production
 
 ENV NODE_ENV=production
 ENV RUNTIME_ENV=true
-ENV DB_CA_PATH=/app/certs/rds-ca.pem
 
 WORKDIR /app
 
@@ -83,5 +82,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD sh -c 'wget -qO- http://localhost:3000/${SERVICE_NAME:+$SERVICE_NAME/}health || exit 1'
 
 # Entrypoint + default command
-ENTRYPOINT ["/entrypoint.sh"]
+# ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/src/main.js"]
