@@ -8,187 +8,221 @@ pipeline {
     }
 
     environment {
-        AWS_REGION = "ap-southeast-1"
-        SERVICE_NAME = "my-service"
-        AWS_ACCOUNT_ID = "123456789012"
-        ASG_NAME = "my-asg"
+        // AWS configuration
+        AWS_DEFAULT_REGION = "ap-southeast-1"
+        AWS_ACCOUNT_ID="619071352095"
+
+        EXCLUDE_FILE = "./deployment/exclude.txt"
+        BACKUP_SCRIPT= "./deployment/backup-db.sh"
+        MIGRATION_SCRIPT="./deployment/migration.sh"
+        ARTIFACT_NAME = "build-artifacts"
+        DEFAULT_WORKSPACE="/var/jenkins_home/workspace/empowerx-poc-test"
+        // pnpm caching - content-addressable store for fast installs
+        PNPM_STORE_DIR = "/var/cache/pnpm-store"
+
+        PROJECT_NAME="empowerx-poc-test"
+        SERVICE_NAME="fsds-api"
+
+        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${SERVICE_NAME}"
     }
 
     stages {
+      stage('Checkout Project Repository') {
+          steps {
+              script {
+                  try {
+                      echo "Setting up default variables and workspace..."
+                      
+                      // Set up workspace and deployment variables
+                      env.CUSTOM_WORKSPACE = "$DEFAULT_WORKSPACE/${env.BRANCH_NAME}"
+                      env.DEPLOY_ENV = "${env.BRANCH_NAME}"
+                      
+                      echo "Branch: ${env.BRANCH_NAME}"
+                      echo "Deploy Environment: ${env.DEPLOY_ENV}"
+                      echo "Custom Workspace: ${env.CUSTOM_WORKSPACE}"
+                      
+                      ws("${env.CUSTOM_WORKSPACE}") {
+                          echo "Checking out source code..."
+                          checkout scm
+                          
+                          // Get repository information
+                          if (!scm.getUserRemoteConfigs() || scm.getUserRemoteConfigs().isEmpty()) {
+                              error "No remote repository configured"
+                          }
 
-        stage('Install Dependencies') {
-            steps {
-                sh '''
-                echo "Installing dependencies..."
+                          if (env.BRANCH_NAME == "dev") {
+                              env.ENV_TAG = "dev-latest"
+                          } else if (env.BRANCH_NAME == "main") {
+                              env.ENV_TAG = "prod-latest"
+                          } else {
+                              env.ENV_TAG = "staging-latest"
+                          }
+                          
+                          env.REPO_URL = scm.getUserRemoteConfigs()[0].getUrl()
+                          echo "Repository URL: ${env.REPO_URL}"
+                          
+                          // Get current commit hash
+                          def commitHash = sh(
+                              script: "git rev-parse HEAD",
+                              returnStdout: true
+                          ).trim()
 
-                # Install AWS CLI v2 if not installed
-                if ! command -v aws &> /dev/null; then
-                  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                  unzip awscliv2.zip
-                  sudo ./aws/install
-                  rm -rf awscliv2.zip aws/
-                fi
+                          
+                          if (!commitHash) {
+                              error "Failed to get commit hash"
+                          }
+                          
+                          env.COMMIT = commitHash
+                          echo "Current commit: ${env.COMMIT}"
+                          echo "Environment tag for ECR: ${env.ENV_TAG}"
+                          
+                          // Get commit messages based on build type
+                          def commitMessages = ""
+                          
+                          if (env.CHANGE_ID) {
+                              // Pull Request build - get commits between base and head
+                              echo "Detected PR build, collecting commit messages from PR..."
+                              try {
+                                  commitMessages = "• ${env.CHANGE_TITLE}"
+                                  if (env.CHANGE_DESCRIPTION?.trim()) {
+                                      commitMessages += "\n" + env.CHANGE_DESCRIPTION
+                                  }
+                                  
+                                  if (!commitMessages) {
+                                      commitMessages = sh(
+                                          script: "git log -1 --pretty=format:' %s' ${env.COMMIT}",
+                                          returnStdout: true
+                                      ).trim()
+                                  }
+                              } catch (Exception e) {
+                                  echo "Warning: Could not get PR commit messages: ${e.getMessage()}"
+                                  commitMessages = "Unable to retrieve commit messages"
+                              }
+                          } else {
+                              // Regular branch build - get recent commits
+                              echo "Detected branch build, collecting recent commit messages..."
+                              try {
+                                  commitMessages = sh(
+                                      script: "git log -1 --oneline --pretty=format:' %s' ${env.COMMIT}",
+                                      returnStdout: true
+                                  ).trim()
+                              } catch (Exception e) {
+                                  echo "Warning: Could not get commit messages: ${e.getMessage()}"
+                                  commitMessages = "Unable to retrieve commit messages"
+                              }
+                          }
+                          
+                          // Clean up repository URL and set commit URL
+                          def cleanRepoUrl = env.REPO_URL.replaceFirst(/\.git$/, '')
+                          env.COMMIT_MESSAGES = commitMessages ?: "No commit messages available"
+                          env.COMMIT_URL = env.CHANGE_URL ?: "${cleanRepoUrl}/commit/${env.COMMIT}"
+                          
+                          // Get the person who initiated this build
+                          env.INITIATED_BY = "system"
+                          try {
+                              if (env.COMMIT) {
+                                  def author = sh(
+                                      script: "git --no-pager show -s --format='%an' ${env.COMMIT}",
+                                      returnStdout: true
+                                  ).trim()
+                                  
+                                  if (author) {
+                                      env.INITIATED_BY = author
+                                  }
+                              }
+                              
+                              // Override with BUILD_USER if available (manual trigger)
+                              if (env.BUILD_USER) {
+                                  env.INITIATED_BY = env.BUILD_USER
+                              }
+                              
+                              // For PR builds, try to get the PR author
+                              if (env.CHANGE_AUTHOR) {
+                                  env.INITIATED_BY = env.CHANGE_AUTHOR
+                              }
+                              
+                          } catch (Exception e) {
+                              echo "Warning: Could not determine build initiator: ${e.getMessage()}"
+                              env.INITIATED_BY = "unknown"
+                          }
+                          
+                          echo "Build initiated by: ${env.INITIATED_BY}"
+                          echo "Commit URL: ${env.COMMIT_URL}"
+                          echo "Commit messages preview: ${env.COMMIT_MESSAGES.take(200)}..."
+                          echo "Successfully checked out code at workspace: ${env.CUSTOM_WORKSPACE}"
+                      }
+                      
+                  } catch (Exception e) {
+                      error "Failed during checkout: ${e.getMessage()}"
+                  }
+              }
+          }
+      }
 
-                # Install Docker if not installed
-                if ! command -v docker &> /dev/null; then
-                  sudo apt-get update
-                  sudo apt-get install -y docker.io docker-compose-plugin
-                fi
+      stage('Create CACHE folders') {
+          steps {
+              script {
+                  ws("${env.CUSTOM_WORKSPACE}") {
+                      sh '''
+                          mkdir -p $PNPM_STORE_DIR
+                      '''
+                  }
+              }
+          }
+      }
 
-                # Ensure Docker daemon is running
-                sudo systemctl start docker
-                sudo systemctl enable docker
+      stage('Prepare environment variables') {
+          steps {
+              echo "Load environment variables from config file to global environment"
+              script {
+                  ws("${env.CUSTOM_WORKSPACE}") {
+                      configFileProvider([configFile(fileId: "config.${env.DEPLOY_ENV}", variable: 'ENV_FILE_PATH')]) {
+                          // Load the file and export variables into environment
+                          def envVars = readFile("${ENV_FILE_PATH}")
+                              .split('\n')
+                              .findAll { it.trim() && !it.startsWith('#') }
+                              .collectEntries { line ->
+                                  def (key, value) = line.split('=', 2)
+                                  [(key.trim()): value.trim()]
+                              }
 
-                # Setup Docker Buildx
-                docker buildx create --use || true
+                          // Set each env var dynamically
+                          envVars.each { key, value ->
+                              env."${key}" = value
+                          }
+                      }
+                  }
+              }
+          }
+      }
 
-                # Verify versions
-                aws --version
-                docker --version
-                docker buildx version
-                '''
-            }
-        }
+      stage('Build & Push Docker Image to ECR') {
+          steps {
+              script {
+                  ws("${env.CUSTOM_WORKSPACE}") {
+                      withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-laurence', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                      sh '''
+                          # Login to ECR
+                          aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ECR_URL}
 
-        stage('Checkout') {
-            steps { checkout scm }
-        }
+                          # Setup buildx (important)
+                          docker buildx create --use || true
 
-        stage('Set Environment Variables') {
-            steps {
-                script {
-                    if (env.BRANCH_NAME == "main") {
-                        env.ENVIRONMENT = "prod"
-                        env.ENV_TAG = "prod-latest"
-                    } else if (env.BRANCH_NAME == "dev") {
-                        env.ENVIRONMENT = "dev"
-                        env.ENV_TAG = "dev-latest"
-                    } else {
-                        env.ENVIRONMENT = "staging"
-                        env.ENV_TAG = "staging-latest"
-                    }
-                }
-            }
-        }
+                          # Build + Push (multi-arch)
+                          IMAGE=${ECR_URL}:${ENV_TAG}
 
-        stage('Ensure ECR Repo Exists') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                    aws ecr describe-repositories --repository-names $SERVICE_NAME \
-                    || aws ecr create-repository --repository-name $SERVICE_NAME --region $AWS_REGION
-                    '''
-                }
-            }
-        }
-
-        stage('Login to ECR') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                    aws ecr get-login-password --region $AWS_REGION | docker login \
-                      --username AWS \
-                      --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-                    '''
-                }
-            }
-        }
-
-        stage('Build and Push Docker Image') {
-            parallel {
-                stage('Build amd64') {
-                    steps {
-                        sh '''
-                        IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG-amd64
-                        docker buildx build \
-                          --platform linux/amd64 \
-                          -t $IMAGE \
-                          --push \
-                          --cache-from=type=registry,ref=$IMAGE \
-                          --cache-to=type=registry,mode=max,ref=$IMAGE \
-                          .
-                        '''
-                    }
-                }
-                stage('Build arm64') {
-                    steps {
-                        sh '''
-                        IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG-arm64
-                        docker buildx build \
-                          --platform linux/arm64 \
-                          -t $IMAGE \
-                          --push \
-                          --cache-from=type=registry,ref=$IMAGE \
-                          --cache-to=type=registry,mode=max,ref=$IMAGE \
-                          .
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Generate docker-compose.yml') {
-            steps {
-                sh '''
-                cat > docker-compose.yml <<EOL
-                services:
-                  app:
-                    image: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$SERVICE_NAME:$ENV_TAG-amd64
-                    container_name: $SERVICE_NAME-api
-                    ports:
-                      - "80:3000"
-                EOL
-                '''
-            }
-        }
-
-        stage('Generate .env') {
-            steps {
-                withCredentials([string(credentialsId: 'app-env', variable: 'CLEAN_ENV')]) {
-                    sh 'echo "$CLEAN_ENV" > .env'
-                }
-            }
-        }
-
-        stage('Upload to S3') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                    S3_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/docker-compose.yml"
-                    S3_ENV_PATH="s3://s3-compose/${SERVICE_NAME}/${ENV_TAG}/.env"
-
-                    echo "Uploading docker-compose.yml to $S3_PATH"
-                    echo "Uploading .env to $S3_ENV_PATH"
-
-                    aws s3 cp .env $S3_ENV_PATH --region $AWS_REGION
-                    aws s3 cp docker-compose.yml $S3_PATH --region $AWS_REGION
-                    '''
-                }
-            }
-        }
-
-        stage('Trigger ASG Refresh') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-                    sh '''
-                    aws autoscaling start-instance-refresh \
-                      --auto-scaling-group-name $ASG_NAME \
-                      --region $AWS_REGION
-                    '''
-                }
-            }
-        }
+                          docker buildx build \
+                            --platform linux/amd64,linux/arm64 \
+                            -t $IMAGE \
+                            --push \
+                            --cache-from=type=registry,ref=$IMAGE \
+                            --cache-to=type=registry,ref=$IMAGE,mode=max \
+                            .
+                      '''
+                      }
+                  }
+              }
+          }
+      }
     }
 }

@@ -80,6 +80,4 @@ ENV SERVICE_NAME=fsds-api
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD sh -c 'wget -qO- http://localhost:3000/${SERVICE_NAME:+$SERVICE_NAME/}health || exit 1'
 
-# Entrypoint + default command
-# ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/src/main.js"]
