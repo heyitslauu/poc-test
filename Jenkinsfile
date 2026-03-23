@@ -8,22 +8,20 @@ pipeline {
     }
 
     environment {
-        // AWS configuration
         AWS_DEFAULT_REGION = "ap-southeast-1"
         AWS_ACCOUNT_ID="619071352095"
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+        IMAGE_REPO = "${ECR_REGISTRY}/${SERVICE_NAME}"
 
         EXCLUDE_FILE = "./deployment/exclude.txt"
         BACKUP_SCRIPT= "./deployment/backup-db.sh"
         MIGRATION_SCRIPT="./deployment/migration.sh"
         ARTIFACT_NAME = "build-artifacts"
         DEFAULT_WORKSPACE="/var/jenkins_home/workspace/empowerx-poc-test"
-        // pnpm caching - content-addressable store for fast installs
         PNPM_STORE_DIR = "/var/cache/pnpm-store"
 
         PROJECT_NAME="empowerx-poc-test"
         SERVICE_NAME="fsds-api"
-
-        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${SERVICE_NAME}"
     }
 
     stages {
@@ -196,41 +194,107 @@ pipeline {
           }
       }
 
-      stage('Build & Push Docker Image to ECR') {
+      stage('Build & Push Multi-Arch Image') {
           steps {
               script {
-                  sh '''
-                      apt-get update || true
-                      apt-get install -y awscli || true
-                  '''
-                  sh '''
-                      # Verify it's installed
-                      aws --version
-                  '''
                   ws("${env.CUSTOM_WORKSPACE}") {
                       withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-laurence', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                      sh '''
-                          # Login to ECR
-                          aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ECR_URL}
+                          sh """
+                              set -euxo pipefail
 
-                          # Setup buildx (important)
-                          docker buildx create --use || true
+                              # 1. Register QEMU (On the host)
+                              docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
-                          # Build + Push (multi-arch)
-                          IMAGE=${ECR_URL}:${ENV_TAG}
+                              # 2. Run the build
+                              docker run --rm --privileged \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                --volumes-from cicd-jenkins-region \
+                                -e AWS_ACCESS_KEY_ID \
+                                -e AWS_SECRET_ACCESS_KEY \
+                                -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
+                                -e ECR_REGISTRY="${ECR_REGISTRY}" \
+                                -e IMAGE_REPO="${IMAGE_REPO}" \
+                                -e ENV_TAG="${env.ENV_TAG}" \
+                                -e WSPACE="${env.CUSTOM_WORKSPACE}" \
+                                docker:24.0.7 \
+                                sh -c '
+                                  set -ex
+                                  
+                                  # Install AWS CLI
+                                  apk add --no-cache aws-cli
 
-                          docker buildx build \
-                            --platform linux/amd64,linux/arm64 \
-                            -t $IMAGE \
-                            --push \
-                            --cache-from=type=registry,ref=$IMAGE \
-                            --cache-to=type=registry,ref=$IMAGE,mode=max \
-                            .
-                      '''
+                                  # Install Buildx binary manually (avoids apk conflicts)
+                                  export BUILDX_VERSION="v0.12.1"
+                                  mkdir -p ~/.docker/cli-plugins
+                                  wget -qO ~/.docker/cli-plugins/docker-buildx "https://github.com/docker/buildx/releases/download/\${BUILDX_VERSION}/buildx-\${BUILDX_VERSION}.linux-amd64"
+                                  chmod a+x ~/.docker/cli-plugins/docker-buildx
+
+                                  # Login to ECR
+                                  aws ecr get-login-password --region \$AWS_DEFAULT_REGION | docker login --username AWS --password-stdin \$ECR_REGISTRY
+                                  
+                                  cd "\$WSPACE"
+                                  
+                                  docker buildx create --use --name multi-arch-builder --driver docker-container || docker buildx use multi-arch-builder
+                                  docker buildx inspect --bootstrap
+                                  
+                                  docker buildx build \
+                                    --platform linux/amd64,linux/arm64 \
+                                    -f Dockerfile \
+                                    -t "\$IMAGE_REPO:\$ENV_TAG" \
+                                    --push .
+                                '
+                          """
                       }
                   }
               }
           }
       }
-    }
+
+      stage('Prepare Environment for Deployment') {
+          steps {
+            script {
+                ws("${env.CUSTOM_WORKSPACE}") {
+                    withCredentials([
+                        aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-laurence', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'),
+                        file(credentialsId: "env.${env.DEPLOY_ENV}", variable: 'SECRET_ENV_PATH')
+                    ]) {
+                        sh """
+                            set -e
+                            
+                            # 1. Copy the Secret File to the workspace as .env
+                            cp "\$SECRET_ENV_PATH" .env
+                            sed -i 's/\r$//' .env  # Fix line endings
+                            
+                            # 2. Generate docker-compose.yml
+                            # Variables like ${ECR_REGISTRY} come from Jenkins
+                            cat > docker-compose.yml <<EOF
+                            services:
+                              app:
+                                image: ${ECR_REGISTRY}/${IMAGE_REPO}:${env.ENV_TAG}
+                                container_name: ${SERVICE_NAME}
+                                ports:
+                                  - "3000:3000"
+                                env_file:
+                                  - .env
+                            EOF
+
+                            # 3. Define S3 Paths
+                            S3_BASE_PATH="s3://s3-compose/${SERVICE_NAME}/${env.ENV_TAG}"
+
+                            # 4. Upload to S3
+                            echo "Uploading to \$S3_BASE_PATH..."
+                            aws s3 cp .env "\$S3_BASE_PATH/.env" --region ${AWS_DEFAULT_REGION}
+                            aws s3 cp docker-compose.yml "\$S3_BASE_PATH/docker-compose.yml" --region ${AWS_DEFAULT_REGION}
+
+                            # 5. Trigger ASG Instance Refresh
+                            echo "Triggering ASG Refresh for ${ASG_NAME}..."
+                            aws autoscaling start-instance-refresh \
+                                --auto-scaling-group-name ${ASG_NAME} \
+                                --region ${AWS_DEFAULT_REGION}
+                        """
+                    }
+                }
+            }
+          }
+      }
 }

@@ -1,11 +1,9 @@
 name: CI/CD - Build, Push to ECR, Deploy
 
-# on:
-#   push:
-#     branches:
-#       - dev
-#       - staging
-#       - main
+on:
+  push:
+    branches:
+      - disabled-branch
 
 jobs:
   build:
