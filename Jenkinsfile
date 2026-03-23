@@ -22,7 +22,6 @@ pipeline {
         PNPM_STORE_DIR = "/var/cache/pnpm-store"
 
         PROJECT_NAME="empowerx-poc-test"
-
     }
 
     stages {
@@ -32,8 +31,7 @@ pipeline {
                   try {
                       echo "Setting up default variables and workspace..."
                       
-                      // Set up workspace and deployment variables
-                      env.CUSTOM_WORKSPACE = "$DEFAULT_WORKSPACE/${env.BRANCH_NAME}"
+                      env.CUSTOM_WORKSPACE = "${env.DEFAULT_WORKSPACE}/${env.BRANCH_NAME}"
                       env.DEPLOY_ENV = "${env.BRANCH_NAME}"
                       
                       echo "Branch: ${env.BRANCH_NAME}"
@@ -44,7 +42,6 @@ pipeline {
                           echo "Checking out source code..."
                           checkout scm
                           
-                          // Get repository information
                           if (!scm.getUserRemoteConfigs() || scm.getUserRemoteConfigs().isEmpty()) {
                               error "No remote repository configured"
                           }
@@ -60,13 +57,11 @@ pipeline {
                           env.REPO_URL = scm.getUserRemoteConfigs()[0].getUrl()
                           echo "Repository URL: ${env.REPO_URL}"
                           
-                          // Get current commit hash
                           def commitHash = sh(
                               script: "git rev-parse HEAD",
                               returnStdout: true
                           ).trim()
 
-                          
                           if (!commitHash) {
                               error "Failed to get commit hash"
                           }
@@ -75,11 +70,9 @@ pipeline {
                           echo "Current commit: ${env.COMMIT}"
                           echo "Environment tag for ECR: ${env.ENV_TAG}"
                           
-                          // Get commit messages based on build type
                           def commitMessages = ""
                           
                           if (env.CHANGE_ID) {
-                              // Pull Request build - get commits between base and head
                               echo "Detected PR build, collecting commit messages from PR..."
                               try {
                                   commitMessages = "• ${env.CHANGE_TITLE}"
@@ -98,7 +91,6 @@ pipeline {
                                   commitMessages = "Unable to retrieve commit messages"
                               }
                           } else {
-                              // Regular branch build - get recent commits
                               echo "Detected branch build, collecting recent commit messages..."
                               try {
                                   commitMessages = sh(
@@ -111,12 +103,10 @@ pipeline {
                               }
                           }
                           
-                          // Clean up repository URL and set commit URL
                           def cleanRepoUrl = env.REPO_URL.replaceFirst(/\.git$/, '')
                           env.COMMIT_MESSAGES = commitMessages ?: "No commit messages available"
                           env.COMMIT_URL = env.CHANGE_URL ?: "${cleanRepoUrl}/commit/${env.COMMIT}"
                           
-                          // Get the person who initiated this build
                           env.INITIATED_BY = "system"
                           try {
                               if (env.COMMIT) {
@@ -130,12 +120,10 @@ pipeline {
                                   }
                               }
                               
-                              // Override with BUILD_USER if available (manual trigger)
                               if (env.BUILD_USER) {
                                   env.INITIATED_BY = env.BUILD_USER
                               }
                               
-                              // For PR builds, try to get the PR author
                               if (env.CHANGE_AUTHOR) {
                                   env.INITIATED_BY = env.CHANGE_AUTHOR
                               }
@@ -176,7 +164,6 @@ pipeline {
               script {
                   ws("${env.CUSTOM_WORKSPACE}") {
                       configFileProvider([configFile(fileId: "config.${env.DEPLOY_ENV}", variable: 'ENV_FILE_PATH')]) {
-                          // Load the file and export variables into environment
                           def envVars = readFile("${ENV_FILE_PATH}")
                               .split('\n')
                               .findAll { it.trim() && !it.startsWith('#') }
@@ -185,9 +172,9 @@ pipeline {
                                   [(key.trim()): value.trim()]
                               }
 
-                          // Set each env var dynamically
-                          envVars.each { key, value ->
-                              env."${key}" = value
+                          // FIX: Changed from .each closure to a for-loop to prevent NotSerializableException in Jenkins
+                          for (def entry : envVars) {
+                              env."${entry.key}" = entry.value
                           }
                       }
                   }
@@ -212,25 +199,22 @@ pipeline {
                                 --volumes-from cicd-jenkins-region \
                                 -e AWS_ACCESS_KEY_ID \
                                 -e AWS_SECRET_ACCESS_KEY \
-                                -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
-                                -e ECR_REGISTRY="${ECR_REGISTRY}" \
-                                -e IMAGE_REPO="${IMAGE_REPO}" \
+                                -e AWS_DEFAULT_REGION="${env.AWS_DEFAULT_REGION}" \
+                                -e ECR_REGISTRY="${env.ECR_REGISTRY}" \
+                                -e IMAGE_REPO="${env.IMAGE_REPO}" \
                                 -e ENV_TAG="${env.ENV_TAG}" \
                                 -e WSPACE="${env.CUSTOM_WORKSPACE}" \
                                 docker:24.0.7 \
                                 sh -c '
                                   set -ex
                                   
-                                  # Install AWS CLI
                                   apk add --no-cache aws-cli
 
-                                  # Install Buildx binary manually (avoids apk conflicts)
                                   export BUILDX_VERSION="v0.12.1"
                                   mkdir -p ~/.docker/cli-plugins
                                   wget -qO ~/.docker/cli-plugins/docker-buildx "https://github.com/docker/buildx/releases/download/\${BUILDX_VERSION}/buildx-\${BUILDX_VERSION}.linux-amd64"
                                   chmod a+x ~/.docker/cli-plugins/docker-buildx
 
-                                  # Login to ECR
                                   aws ecr get-login-password --region \$AWS_DEFAULT_REGION | docker login --username AWS --password-stdin \$ECR_REGISTRY
                                   
                                   cd "\$WSPACE"
@@ -250,5 +234,38 @@ pipeline {
               }
           }
       }
+
+      stage('Prepare Environment for Deployment and Instance Refresh'){
+        steps {
+          script {
+            ws("${env.CUSTOM_WORKSPACE}") {
+              withCredentials([
+                  file(credentialsId: "env.${env.DEPLOY_ENV}", variable: 'ENV_FILE'),
+                  aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-laurence', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')
+              ]) {
+                sh """
+                    cp "\$ENV_FILE" .env
+                    sed -i 's/\\r\$//' .env
+
+                    cat > docker-compose.yml <<EOF
+services:
+  app:
+    image: ${env.IMAGE_REPO}:${env.ENV_TAG}
+    container_name: ${env.SERVICE_NAME}
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+EOF
+
+                    S3_BASE_PATH="s3://s3-compose/${env.SERVICE_NAME}/${env.ENV_TAG}"
+                    aws s3 cp docker-compose.yml "\$S3_BASE_PATH/docker-compose.yml"
+                    aws s3 cp .env "\$S3_BASE_PATH/.env" --region ${env.AWS_DEFAULT_REGION}
+                """
+              }
+            }
+          }
+        } 
+      } 
     }
 }
