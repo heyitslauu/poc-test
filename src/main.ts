@@ -42,8 +42,6 @@ async function bootstrap() {
   const corsOptions = getCorsConfig(configService);
   app.enableCors(corsOptions);
 
-  app.setGlobalPrefix('fsds-api');
-
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
