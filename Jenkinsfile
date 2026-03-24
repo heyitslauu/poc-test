@@ -234,6 +234,7 @@ pipeline {
                                     --platform linux/amd64,linux/arm64 \
                                     -f Dockerfile \
                                     -t "\$IMAGE_REPO:\$ENV_TAG" \
+                                    -t "\$IMAGE_REPO:\$VERSION_TAG" \
                                     --push .
                                 '
                           """
