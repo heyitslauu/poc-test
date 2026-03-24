@@ -211,6 +211,7 @@ pipeline {
                                 -e ECR_REGISTRY="${env.ECR_REGISTRY}" \
                                 -e IMAGE_REPO="${env.IMAGE_REPO}" \
                                 -e ENV_TAG="${env.ENV_TAG}" \
+                                -e VERSION_TAG="${env.VERSION_TAG}" \
                                 -e WSPACE="${env.CUSTOM_WORKSPACE}" \
                                 docker:24.0.7 \
                                 sh -c '
