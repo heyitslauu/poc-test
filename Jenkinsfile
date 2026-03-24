@@ -9,7 +9,7 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = "ap-southeast-1"
-        AWS_ACCOUNT_ID="619071352095"
+        AWS_ACCOUNT_ID="619071352095" // TODO: Change this to your actual AWS account ID  
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
         SERVICE_NAME="fsds-api" // TODO: Change this to your actual service name, e.g. "myapp-api"
         IMAGE_REPO = "${ECR_REGISTRY}/${SERVICE_NAME}"
@@ -18,7 +18,6 @@ pipeline {
         PNPM_STORE_DIR = "/var/cache/pnpm-store"
 
         PROJECT_NAME="empowerx-poc-test" // TODO: Change this to your actual project name, e.g. "myapp"
-        ASG_NAME="${SERVICE_NAME}-${DEPLOY_ENV}-asg"
     }
 
     stages {
@@ -293,11 +292,11 @@ EOF
         agent any
         steps {
           script {
+            env.ASG_NAME = "${env.SERVICE_NAME}-${env.DEPLOY_ENV}-asg"
             withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-laurence', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
               sh """
                   set -e
                   echo "🚀 Triggering Instance Refresh for ASG: ${env.ASG_NAME}"
-                  
                   # This command tells AWS to start terminating old instances and booting new ones
                   aws autoscaling start-instance-refresh \
                       --auto-scaling-group-name "${env.ASG_NAME}" \
