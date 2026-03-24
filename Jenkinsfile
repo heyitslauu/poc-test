@@ -254,7 +254,7 @@ pipeline {
           }
       }
 
-      stage('Prepare Environment for Deployment and Instance Refresh'){
+      stage('Upload Configuration to S3'){
         agent any
         steps {
           script {
@@ -286,6 +286,27 @@ EOF
             }
           }
         } 
+      }
+
+      stage('Trigger ASG Instance Refresh') {
+        agent any
+        steps {
+          script {
+            withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws-laurence', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+              sh """
+                  set -e
+                  echo "🚀 Triggering Instance Refresh for ASG: ${env.ASG_NAME}"
+                  
+                  # This command tells AWS to start terminating old instances and booting new ones
+                  aws autoscaling start-instance-refresh \
+                      --auto-scaling-group-name "${env.ASG_NAME}" \
+                      --region "${env.AWS_DEFAULT_REGION}"
+                  
+                  echo "✅ Instance Refresh triggered successfully! AWS is now rolling out the new instances."
+              """
+            }
+          }
+        }
       }
     }
 }
