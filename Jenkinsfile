@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none
 
     options {
         skipDefaultCheckout()
@@ -11,21 +11,19 @@ pipeline {
         AWS_DEFAULT_REGION = "ap-southeast-1"
         AWS_ACCOUNT_ID="619071352095"
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
-        SERVICE_NAME="fsds-api"
+        SERVICE_NAME="fsds-api" // TODO: Change this to your actual service name, e.g. "myapp-api"
         IMAGE_REPO = "${ECR_REGISTRY}/${SERVICE_NAME}"
-
-        EXCLUDE_FILE = "./deployment/exclude.txt"
-        BACKUP_SCRIPT= "./deployment/backup-db.sh"
-        MIGRATION_SCRIPT="./deployment/migration.sh"
-        ARTIFACT_NAME = "build-artifacts"
+      
         DEFAULT_WORKSPACE="/var/jenkins_home/workspace/empowerx-poc-test"
         PNPM_STORE_DIR = "/var/cache/pnpm-store"
 
-        PROJECT_NAME="empowerx-poc-test"
+        PROJECT_NAME="empowerx-poc-test" // TODO: Change this to your actual project name, e.g. "myapp"
+        ASG_NAME="${SERVICE_NAME}-${DEPLOY_ENV}-asg"
     }
 
     stages {
       stage('Checkout Project Repository') {
+        agent any
           steps {
               script {
                   try {
@@ -41,19 +39,7 @@ pipeline {
                       ws("${env.CUSTOM_WORKSPACE}") {
                           echo "Checking out source code..."
                           checkout scm
-                          
-                          if (!scm.getUserRemoteConfigs() || scm.getUserRemoteConfigs().isEmpty()) {
-                              error "No remote repository configured"
-                          }
 
-                          if (env.BRANCH_NAME == "dev") {
-                              env.ENV_TAG = "dev-latest"
-                          } else if (env.BRANCH_NAME == "main") {
-                              env.ENV_TAG = "prod-latest"
-                          } else {
-                              env.ENV_TAG = "staging-latest"
-                          }
-                          
                           env.REPO_URL = scm.getUserRemoteConfigs()[0].getUrl()
                           echo "Repository URL: ${env.REPO_URL}"
                           
@@ -62,14 +48,33 @@ pipeline {
                               returnStdout: true
                           ).trim()
 
+                          env.SHORT_COMMIT = commitHash.take(7) 
+
                           if (!commitHash) {
                               error "Failed to get commit hash"
                           }
                           
+                          if (!scm.getUserRemoteConfigs() || scm.getUserRemoteConfigs().isEmpty()) {
+                              error "No remote repository configured"
+                          }
+
+                          if (env.BRANCH_NAME == "dev") {
+                              env.ENV_TAG = "dev-latest"
+                              env.VERSION_TAG = "dev-${env.SHORT_COMMIT}"
+                          } else if (env.BRANCH_NAME == "main") {
+                              env.ENV_TAG = "prod-latest"
+                              env.VERSION_TAG = "prod-${env.SHORT_COMMIT}"
+                          } else {
+                              env.ENV_TAG = "staging-latest"
+                              env.VERSION_TAG = "staging-${env.SHORT_COMMIT}"
+                          }
+                          
+                          echo "Environment floating tag: ${env.ENV_TAG}"
+                          echo "Environment version tag: ${env.VERSION_TAG}"
+
                           env.COMMIT = commitHash
                           echo "Current commit: ${env.COMMIT}"
-                          echo "Environment tag for ECR: ${env.ENV_TAG}"
-                          
+
                           def commitMessages = ""
                           
                           if (env.CHANGE_ID) {
@@ -147,6 +152,7 @@ pipeline {
       }
 
       stage('Create CACHE folders') {
+          agent any
           steps {
               script {
                   ws("${env.CUSTOM_WORKSPACE}") {
@@ -159,6 +165,7 @@ pipeline {
       }
 
       stage('Prepare environment variables') {
+          agent any
           steps {
               echo "Load environment variables from config file to global environment"
               script {
@@ -183,6 +190,7 @@ pipeline {
       }
 
       stage('Build & Push Multi-Arch Image') {
+          agent any
           steps {
               script {
                   ws("${env.CUSTOM_WORKSPACE}") {
@@ -235,7 +243,18 @@ pipeline {
           }
       }
 
+      stage('Production Deploy Approval') {
+          when { branch 'main' }
+          steps {
+              timeout(time: 2, unit: 'DAYS') {
+                  input message: "Image pushed to ECR. Do you want to deploy version ${env.VERSION_TAG} to Production?", 
+                        ok: "Deploy to Production"
+              }
+          }
+      }
+
       stage('Prepare Environment for Deployment and Instance Refresh'){
+        agent any
         steps {
           script {
             ws("${env.CUSTOM_WORKSPACE}") {
@@ -250,7 +269,7 @@ pipeline {
                     cat > docker-compose.yml <<EOF
 services:
   app:
-    image: ${env.IMAGE_REPO}:${env.ENV_TAG}
+    image: ${env.IMAGE_REPO}:${env.VERSION_TAG}
     container_name: ${env.SERVICE_NAME}
     ports:
       - "3000:3000"
@@ -266,6 +285,6 @@ EOF
             }
           }
         } 
-      } 
+      }
     }
 }
